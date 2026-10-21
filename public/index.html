@@ -1,0 +1,159 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hoş Geldin</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#0b1020;color:#f5f7ff}
+header{display:flex;justify-content:center;gap:7px;padding:15px;border-bottom:1px solid #26314b}
+.page-tab{border:0;border-radius:7px;padding:5px 10px;font-size:12px;color:#cbd5ed;background:#202b43}
+.page-tab.active{background:#718cff;color:#081020}
+main{max-width:520px;margin:auto;padding:20px 18px 100px}
+.card{margin-top:22px;padding:23px;background:#151d32;border:1px solid #293653;border-radius:18px}
+h1{font-size:27px;margin-top:0}
+p{color:#c2cbe0;line-height:1.6}
+label{display:block;margin:18px 0 8px}
+input[type=text]{width:100%;padding:14px;border-radius:10px;border:1px solid #445371;background:#0b1020;color:white;font-size:16px}
+.hidden{display:none}
+.bottom{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;padding:13px 18px calc(13px + env(safe-area-inset-bottom));background:#0b1020f5;border-top:1px solid #293653}
+#continueBtn{width:100%;max-width:480px;padding:15px;border:0;border-radius:11px;background:#718cff;color:#081020;font-size:16px;font-weight:bold}
+#status{overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<header>
+  <button class="page-tab active" id="tab1" type="button">1</button>
+  <button class="page-tab" id="tab2" type="button">2</button>
+</header>
+
+<main>
+  <section class="card" id="page1">
+    <h1>Web sitemize hoş geldin</h1>
+    <p>Devam etmek için ismini yazabilirsin.</p>
+    <label for="username">İsmin</label>
+    <input id="username" type="text" maxlength="60" placeholder="İsmini yaz" autocomplete="name">
+  </section>
+
+  <section class="card hidden" id="page2">
+    <h1>Teknik rapor</h1>
+    <p>
+      DEVAM EDEBİLİRSİN (:
+    </p>
+  </section>
+
+  <section class="card">
+    <p id="status" role="status">Hoş geldin!</p>
+  </section>
+</main>
+
+<footer class="bottom">
+  <button id="continueBtn" type="button">Devam et</button>
+</footer>
+
+<script>
+const page1=document.getElementById("page1");
+const page2=document.getElementById("page2");
+const tab1=document.getElementById("tab1");
+const tab2=document.getElementById("tab2");
+const username=document.getElementById("username");
+const statusBox=document.getElementById("status");
+const continueBtn=document.getElementById("continueBtn");
+
+let currentPage=1;
+let sending=false;
+
+function showPage(number){
+  currentPage=number;
+  page1.classList.toggle("hidden",number!==1);
+  page2.classList.toggle("hidden",number!==2);
+  tab1.classList.toggle("active",number===1);
+  tab2.classList.toggle("active",number===2);
+  continueBtn.textContent=number===1?"Devam et":"Devam et";
+}
+
+tab1.addEventListener("click",()=>showPage(1));
+tab2.addEventListener("click",()=>showPage(2));
+
+continueBtn.addEventListener("click",async()=>{
+  if(sending)return;
+
+  if(currentPage===1){
+    if(!username.value.trim()){
+      statusBox.textContent="Lütfen ismini yaz.";
+      username.focus();
+      return;
+    }
+    showPage(2);
+    statusBox.textContent="İkinci sayfa açıldı.";
+    return;
+  }
+
+  const name=username.value.trim();
+  if(!name){
+    statusBox.textContent="İlk sayfaya dönüp ismini yaz.";
+    return;
+  }
+
+  sending=true;
+  continueBtn.disabled=true;
+  statusBox.textContent="Rapor gönderiliyor…";
+
+  try{
+    let model="Belirlenemedi";
+    let brand="Belirlenemedi";
+    let platform=navigator.platform||"Belirlenemedi";
+
+    try{
+      if(navigator.userAgentData){
+        const info=await navigator.userAgentData.getHighEntropyValues(["model","platform"]);
+        if(info.model)model=info.model;
+        if(info.platform)platform=info.platform;
+        if(/Android/i.test(platform))brand="Android cihaz";
+      }else if(/iPhone|iPad/i.test(navigator.userAgent)){
+        brand="Apple";
+        model=/iPad/i.test(navigator.userAgent)?"iPad (tam model bilinmiyor)":"iPhone (tam model bilinmiyor)";
+      }else if(/Android/i.test(navigator.userAgent)){
+        brand="Android cihaz";
+        model="Android cihaz (tam model bilinmiyor)";
+      }
+    }catch(_){}
+
+    const report={
+      consent:true,
+      username:name,
+      deviceModel:model,
+      deviceBrand:brand,
+      userAgent:navigator.userAgent,
+      platform,
+      language:navigator.language||"",
+      timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||"",
+      screen:{width:screen.width,height:screen.height},
+      online:navigator.onLine,
+      tests:[
+        {name:"JavaScript",detail:"Çalışıyor"},
+        {name:"Ekran",detail:screen.width+"x"+screen.height},
+        {name:"Bağlantı",detail:navigator.onLine?"Bağlı görünüyor":"Bağlı değil"}
+      ]
+    };
+
+    const response=await fetch("/api/reports",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(report)
+    });
+    const result=await response.json();
+    if(!response.ok)throw new Error(result.error||"Rapor gönderilemedi.");
+    statusBox.textContent="Rapor başarıyla gönderildi.";
+  }catch(error){
+    statusBox.textContent=error.message||"Gönderim başarısız oldu.";
+  }finally{
+    sending=false;
+    continueBtn.disabled=false;
+  }
+});
+</script>
+</body>
+</html>
