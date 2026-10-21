@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: mobil-rapor-paneli
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PANEL_USER
+        value: admin
+      - key: PANEL_PASSWORD
+        generateValue: true
+      - key: DATA_DIR
+        value: /var/data
+    disk:
+      name: report-data
+      mountPath: /var/data
+      sizeGB: 1

@@ -1,0 +1,10 @@
+{
+  "name": "mobil-rapor-paneli",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Consent-based mobile browser diagnostics and report panel",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "express": "^4.21.2" }
+}
