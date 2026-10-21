@@ -1,0 +1,110 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teknik Rapor Paneli</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:#0b1220;color:#eef4fb;font-family:system-ui,sans-serif}
+.wrap{max-width:900px;margin:auto}
+h1{font-size:26px}
+.login,.report{padding:18px;margin:14px 0;background:#141e30;border:1px solid #2b3b55;border-radius:16px}
+.field{width:100%;padding:12px;margin:8px 0;background:#0c1524;color:white;border:1px solid #455772;border-radius:10px}
+button{padding:12px 16px;background:#75e0bd;color:#06271f;border:0;border-radius:10px;font-weight:bold}
+.muted{font-size:13px;color:#aebdd0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.item{padding:11px;background:#0c1524;border-radius:10px;overflow-wrap:anywhere}
+.error{color:#ffb6b6}
+</style>
+</head>
+<body>
+<main class="wrap">
+<h1>Teknik Rapor Paneli</h1>
+<section class="login">
+<label for="password">Panel şifresi</label>
+<input class="field" id="password" type="password" placeholder="Panel şifresi">
+<button id="load">Raporları yükle</button>
+<p id="status" class="muted"></p>
+</section>
+<div id="reports"></div>
+</main>
+<script>
+const statusBox=document.getElementById("status");
+const reportsBox=document.getElementById("reports");
+
+document.getElementById("load").onclick=async()=>{
+ statusBox.className="muted";
+ statusBox.textContent="Raporlar yükleniyor…";
+ reportsBox.replaceChildren();
+
+ try{
+  const response=await fetch("/api/reports",{
+   headers:{"x-panel-password":document.getElementById("password").value}
+  });
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||"Raporlar alınamadı.");
+
+  statusBox.textContent=data.reports.length+" rapor bulundu.";
+
+  for(const report of data.reports){
+   const d=report.device||{};
+   const loc=report.location
+    ?[report.location.city,report.location.region,report.location.country].filter(Boolean).join(", ")
+    :"Konum belirlenemedi";
+
+   const card=document.createElement("section");
+   card.className="report";
+
+   const title=document.createElement("h2");
+   title.textContent=report.username||"Rapor";
+   card.appendChild(title);
+
+   const date=document.createElement("p");
+   date.className="muted";
+   date.textContent=new Date(report.createdAt).toLocaleString();
+   card.appendChild(date);
+
+   const grid=document.createElement("div");
+   grid.className="grid";
+
+   function add(label,value){
+    const item=document.createElement("div");
+    item.className="item";
+    const b=document.createElement("b");
+    b.textContent=label;
+    const v=document.createElement("div");
+    v.textContent=value||"Belirlenemedi";
+    item.append(b,v);
+    grid.appendChild(item);
+   }
+
+   add("IP adresi",report.ip);
+   add("Yaklaşık konum",loc);
+   add("Cihaz modeli",d.model);
+   add("Marka",d.brand);
+   add("Platform",d.platform);
+   add("Tarayıcı",d.userAgent);
+   add("Ekran",d.screen?d.screen.width+" × "+d.screen.height:"Belirlenemedi");
+   add("Dil",d.language);
+   add("Saat dilimi",d.timezone);
+   add("Bağlantı",d.online?"Çevrim içi":"Çevrim dışı");
+   add("Test sonuçları",(report.tests||[]).map(t=>t.name+": "+t.detail).join(" • "));
+
+   const note=document.createElement("p");
+   note.className="muted";
+   note.textContent=report.ipIsPrivate
+    ?"Uyarı: Gösterilen IP özel ağ adresi; genel IP olmayabilir."
+    :"IP konumu yaklaşık bir tahmindir.";
+   card.append(grid,note);
+   reportsBox.appendChild(card);
+  }
+ }catch(error){
+  statusBox.className="error";
+  statusBox.textContent=error.message;
+ }
+};
+</script>
+</body>
+</html>
