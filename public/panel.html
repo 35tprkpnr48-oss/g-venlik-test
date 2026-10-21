@@ -1,0 +1,65 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teknik Rapor Paneli</title>
+<style>
+body{font-family:Arial,sans-serif;background:#101827;color:white;padding:18px}
+button{padding:12px;margin:5px;border:0;border-radius:8px;cursor:pointer}
+pre{background:#1d293b;padding:14px;border-radius:10px;white-space:pre-wrap;overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<h1>Teknik Rapor Paneli</h1>
+<p>Bu panel raporları sunucunun <code>/api/reports</code> adresinden okur.</p>
+<button id="load">Raporları yükle</button>
+<button id="export">JSON olarak indir</button>
+<p id="status" role="status">Henüz yüklenmedi.</p>
+<div id="reports"></div>
+<script>
+let data = [];
+
+document.getElementById("load").onclick = async () => {
+  const status = document.getElementById("status");
+  status.textContent = "Yükleniyor...";
+  try {
+    const response = await fetch("/api/reports");
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    data = await response.json();
+    if (!Array.isArray(data)) {
+      throw new Error("Sunucu beklenen rapor listesini döndürmedi.");
+    }
+    const container = document.getElementById("reports");
+    container.replaceChildren();
+
+    data.forEach((item, index) => {
+      const title = document.createElement("h3");
+      title.textContent = "Rapor " + (index + 1);
+      const pre = document.createElement("pre");
+      pre.textContent = JSON.stringify(item, null, 2);
+      container.append(title, pre);
+    });
+    status.textContent = data.length + " rapor yüklendi.";
+  } catch (error) {
+    status.textContent =
+      "Raporlar yüklenemedi: " + error.message +
+      ". Sunucunun GET /api/reports rotasını ve panel erişim korumasını kontrol et.";
+  }
+};
+
+document.getElementById("export").onclick = () => {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: "application/json"
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "teknik-raporlar.json";
+  a.click();
+  URL.revokeObjectURL(url);
+};
+</script>
+</body>
+</html>
