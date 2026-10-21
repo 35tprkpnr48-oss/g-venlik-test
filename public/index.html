@@ -1,0 +1,114 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mobil Teknik Test</title>
+<style>
+body{font-family:Arial,sans-serif;background:#101827;color:#fff;padding:20px;max-width:600px;margin:auto}
+.card{background:#1d293b;padding:20px;border-radius:16px}
+input,button{box-sizing:border-box;width:100%;padding:14px;margin-top:12px;border-radius:9px;border:0;font-size:16px}
+input{background:#fff;color:#111}
+button{background:#48d6a0;color:#10251e;font-weight:bold}
+.notice{font-size:13px;line-height:1.6;color:#d6deea}
+#result{overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Mobil Teknik Test</h1>
+<p>Tarayıcı ve ekran bilgilerini kontrol et, istersen teknik rapor gönder.</p>
+
+<label for="username">Kullanıcı adın</label>
+<input id="username" maxlength="40" placeholder="Kendi belirlediğin ad" autocomplete="nickname">
+
+<p class="notice">
+Gönderirsen kullanıcı adın, tarayıcı bilgileri, ekran boyutları ve test sonuçları sunucuya iletilir. Sunucu ayrıca IP adresini görebilir. Kesin konum veya rehber bilgileri alınmaz.
+</p>
+
+<button id="test">Testleri çalıştır</button>
+<pre id="result">Henüz test yapılmadı.</pre>
+<button id="send" disabled>Raporu gönder</button>
+<p id="status" role="status"></p>
+</div>
+
+<script>
+let report = null;
+const result = document.getElementById("result");
+const status = document.getElementById("status");
+const send = document.getElementById("send");
+
+document.getElementById("test").addEventListener("click", () => {
+  report = {
+    username: document.getElementById("username").value.trim(),
+    browser: navigator.userAgent,
+    language: navigator.language,
+    platform: navigator.platform,
+    screen: {
+      width: screen.width,
+      height: screen.height,
+      pixelRatio: window.devicePixelRatio
+    },
+    viewport: {
+      width: window.innerWidth,
+      height: window.innerHeight
+    },
+    online: navigator.onLine,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timestamp: new Date().toISOString(),
+    tests: {
+      javascript: true,
+      localStorage: testStorage(),
+      networkOnline: navigator.onLine
+    }
+  };
+
+  result.textContent = JSON.stringify(report, null, 2);
+  send.disabled = false;
+  status.textContent = "Test tamamlandı. Raporu göndermek isteğe bağlıdır.";
+});
+
+function testStorage() {
+  try {
+    const key = "__mobile_test__";
+    localStorage.setItem(key, "ok");
+    localStorage.removeItem(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+send.addEventListener("click", async () => {
+  if (!report) return;
+
+  report.username = document.getElementById("username").value.trim();
+  if (!report.username) {
+    status.textContent = "Lütfen önce bir kullanıcı adı yaz.";
+    return;
+  }
+
+  if (!confirm("Teknik raporun sunucuya gönderilsin mi?")) return;
+
+  send.disabled = true;
+  status.textContent = "Gönderiliyor...";
+
+  try {
+    const response = await fetch("/api/reports", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(report)
+    });
+
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    status.textContent = "Rapor başarıyla gönderildi.";
+  } catch (error) {
+    status.textContent = "Gönderilemedi. Sunucu ayarlarını kontrol et: " + error.message;
+  } finally {
+    send.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
